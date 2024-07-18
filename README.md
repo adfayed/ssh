@@ -1,305 +1,411 @@
-# NCAT(1) - Ncat Reference Guide
+# SSH(1) - General Commands Manual
 
 ## NAME
-
-**ncat** - Concatenate and redirect sockets
+**ssh** — OpenSSH remote login client
 
 ## SYNOPSIS
-
-ncat [OPTIONS...] [hostname] [port]
-
+**ssh** \[-46AaCfGgKkMNnqsTtVvXxYy\] \[-B bind_interface\] \[-b bind_address\] \[-c cipher_spec\] \[-D \[bind_address:\]port\] \[-E log_file\] \[-e escape_char\] \[-F configfile\] \[-I pkcs11\] \[-i identity_file\] \[-J destination\] \[-L address\] \[-l login_name\] \[-m mac_spec\] \[-O ctl_cmd\] \[-o option\] \[-P tag\] \[-p port\] \[-R address\] \[-S ctl_path\] \[-W host:port\] \[-w local_tun\[remote_tun\]\] destination \[command \[argument ...\]\]
+**ssh** \[-Q query_option\]
 
 ## DESCRIPTION
+**ssh** (SSH client) is a program for logging into a remote machine and for executing commands on a remote machine. It provides secure encrypted communications between two untrusted hosts over an insecure network. X11 connections, arbitrary TCP ports, and Unix-domain sockets can also be forwarded over the secure channel.
+
+**ssh** connects and logs into the specified destination, which may be specified as either \[user@\]hostname or a URI of the form `ssh://\[user@\]hostname[:port]`. The user must prove their identity to the remote machine using one of several methods.
+
+If a command is specified, it will be executed on the remote host instead of a login shell. A complete command line may be specified as command, or it may have additional arguments. If supplied, the arguments will be appended to the command, separated by spaces, before it is sent to the server to be executed.
+
+The options are as follows:
+
+### Options
+- **-4**: Forces **ssh** to use IPv4 addresses only.
+- **-6**: Forces **ssh** to use IPv6 addresses only.
+- **-A**: Enables forwarding of connections from an authentication agent such as **ssh-agent(1)**. This can also be specified on a per-host basis in a configuration file.
+  - Agent forwarding should be enabled with caution. Users with the ability to bypass file permissions on the remote host (for the agent's Unix-domain socket) can access the local agent through the forwarded connection. An attacker cannot obtain key material from the agent, but they can perform operations on the keys that enable them to authenticate using the identities loaded into the agent. A safer alternative may be to use a jump host (see -J).
+
+- **-a**: Disables forwarding of the authentication agent connection.
+- **-B bind_interface**: Bind to the address of **bind_interface** before attempting to connect to the destination host. This is only useful on systems with more than one address.
+- **-b bind_address**: Use **bind_address** on the local machine as the source address of the connection. Only useful on systems with more than one address.
+- **-C**: Requests compression of all data (including stdin, stdout, stderr, and data for forwarded X11, TCP, and Unix-domain connections). The compression algorithm is the same used by **gzip(1)**. Compression is desirable on modem lines and other slow connections but will only slow down things on fast networks. The default value can be set on a host-by-host basis in the configuration files; see the Compression option in **ssh_config(5)**.
+- **-c cipher_spec**: Selects the cipher specification for encrypting the session. **cipher_spec** is a comma-separated list of ciphers listed in order of preference. See the Ciphers keyword in **ssh_config(5)** for more information.
+- **-D [bind_address:]port**: Specifies a local “dynamic” application-level port forwarding. This works by allocating a socket to listen to **port** on the local side, optionally bound to the specified **bind_address**. Whenever a connection is made to this port, the connection is forwarded over the secure channel, and the application protocol is then used to determine where to connect to from the remote machine. Currently, the SOCKS4 and SOCKS5 protocols are supported, and **ssh** will act as a SOCKS server. Only root can forward privileged ports. Dynamic port forwardings can also be specified in the configuration file.
+  - IPv6 addresses can be specified by enclosing the address in square brackets. Only the superuser can forward privileged ports. By default, the local port is bound in accordance with the GatewayPorts setting. However, an explicit **bind_address** may be used to bind the connection to a specific address. The **bind_address** of “localhost” indicates that the listening port be bound for local use only, while an empty address or ‘*’ indicates that the port should be available from all interfaces.
+
+- **-E log_file**: Append debug logs to **log_file** instead of standard error.
+- **-e escape_char**: Sets the escape character for sessions with a pty (default: ‘~’). The escape character is only recognized at the beginning of a line. The escape character followed by a dot (‘.’) closes the connection; followed by control-Z suspends the connection; and followed by itself sends the escape character once. Setting the character to “none” disables any escapes and makes the session fully transparent.
+- **-F configfile**: Specifies an alternative per-user configuration file. If a configuration file is given on the command line, the system-wide configuration file (/etc/ssh/ssh_config) will be ignored. The default for the per-user configuration file is ~/.ssh/config. If set to “none”, no configuration files will be read.
+- **-f**: Requests **ssh** to go to background just before command execution. This is useful if **ssh** is going to ask for passwords or passphrases, but the user wants it in the background. This implies -n. The recommended way to start X11 programs at a remote site is with something like **ssh -f host xterm**.
+  - If the ExitOnForwardFailure configuration option is set to “yes”, then a client started with -f will wait for all remote port forwards to be successfully established before placing itself in the background. Refer to the description of ForkAfterAuthentication in **ssh_config(5)** for details.
+
+- **-G**: Causes **ssh** to print its configuration after evaluating Host and Match blocks and exit.
+- **-g**: Allows remote hosts to connect to local forwarded ports. If used on a multiplexed connection, then this option must be specified on the master process.
+- **-I pkcs11**: Specify the PKCS#11 shared library **ssh** should use to communicate with a PKCS#11 token providing keys for user authentication.
+- **-i identity_file**: Selects a file from which the identity (private key) for public key authentication is read. You can also specify a public key file to use the corresponding private key that is loaded in **ssh-agent(1)** when the private key file is not present locally. The default is ~/.ssh/id_rsa, ~/.ssh/id_ecdsa, ~/.ssh/id_ecdsa_sk, ~/.ssh/id_ed25519, ~/.ssh/id_ed25519_sk, and ~/.ssh/id_dsa. Identity files may also be specified on a per-host basis in the configuration file. It is possible to have multiple **-i** options (and multiple identities specified in configuration files). If no certificates have been explicitly specified by the CertificateFile directive, **ssh** will also try to load certificate information from the filename obtained by appending -cert.pub to identity filenames.
+- **-J destination**: Connect to the target host by first making an **ssh** connection to the jump host described by **destination** and then establishing a TCP forwarding to the ultimate destination from there. Multiple jump hops may be specified separated by comma characters. This is a shortcut to specify a ProxyJump configuration directive. Note that configuration directives supplied on the command-line generally apply to the destination host and not any specified jump hosts. Use ~/.ssh/config to specify configuration for jump hosts.
+- **-K**: Enables GSSAPI-based authentication and forwarding (delegation) of GSSAPI credentials to the server.
+- **-k**: Disables forwarding (delegation) of GSSAPI credentials to the server.
+- **-L [bind_address:]port:host:hostport**
+- **-L [bind_address:]port:remote_socket**
+- **-L local_socket:host:hostport**
+- **-L local_socket:remote_socket**
+  - Specifies that connections to the given TCP port or Unix socket on the local (client) host are to be forwarded to the given host and port, or Unix socket, on the remote side. This works by allocating a socket to listen to either a TCP port on the local side, optionally bound to the specified **bind_address**, or to a Unix socket. Whenever a connection is made to the local port or socket, the connection is forwarded over the secure channel, and a connection is made to either host port **hostport**, or the Unix socket **remote_socket**, from the remote machine.
+  - Port forwardings can also be specified in the configuration file. Only the superuser can forward privileged ports. IPv6 addresses can be specified by enclosing the address in square brackets.
+  - By default, the local port is bound in accordance with the GatewayPorts setting. However, an explicit **bind_address** may be used to bind the connection to a specific address. The **bind_address** of “localhost” indicates that the listening port be bound for local use only, while an empty address or ‘*’ indicates that the port should be available from all interfaces.
+
+- **-l login_name**: Specifies the user to log in as on the remote machine. This also may be specified on a per-host basis in the configuration file.
+- **-M**: Places the **ssh** client into “master” mode for connection sharing. Multiple **-M** options place **ssh** into “master” mode but with confirmation required using **ssh-askpass(1)** before each operation that changes the multiplexing state (e.g. opening a new session). Refer to the description of ControlMaster in **ssh_config(5)** for details.
+- **-m mac_spec**: A comma-separated list of MAC (message authentication code) algorithms, specified in order of preference. See the MACs keyword in **ssh_config(5)** for more information.
+- **-N**: Do not execute a remote command. This is useful for just forwarding ports. Refer to the description of SessionType in **ssh_config(5)** for details.
+- **-n**: Redirects stdin from /dev/null (actually, prevents reading from stdin). This must be used when **ssh** is run in the background. A common trick is to use this to run X11 programs on a remote machine. For example, **ssh -n shadows.cs.hut.fi emacs &** will start an emacs on shadows.cs.hut.fi, and the X11 connection will be automatically forwarded over an encrypted channel. The **ssh** program will be put in the background. (This does not work if **ssh** needs to ask for a password or passphrase; see also the **-f** option.) Refer to the description of StdinNull in **ssh_config(5)** for details.
+- **-O ctl_cmd**: Control an active connection multiplexing master process. When the **-O** option is specified, the **ctl_cmd** argument is interpreted and passed to the master process. Valid commands are: “check” (check that the master process is running), “forward” (request forwardings without command execution), “cancel” (cancel forwardings), “exit” (request the master to exit), and “stop” (request the master to stop accepting further multiplexing requests).
+- **-o option**: Can be used to give options in the format used in the configuration file. This is useful for specifying options for which there is no separate command-line flag. For full details of the options listed below, and their possible values, see **ssh_config(5)**.
+  - **AddKeysToAgent**
+  - **AddressFamily**
+  - **BatchMode**
+  - **BindAddress**
+  - **CanonicalDomains**
+  - **CanonicalizeFallbackLocal**
+  - **CanonicalizeHostname**
+  - **CanonicalizeMaxDots**
+  - **CanonicalizePermittedCNAMEs**
+  - **CASignatureAlgorithms**
+  - **CertificateFile**
+  - **CheckHostIP**
+  - **Ciphers**
+  - **ClearAllForwardings**
+  - **Compression**
+  - **ConnectionAttempts**
+  - **ConnectTimeout**
+  - **ControlMaster**
+  - **ControlPath**
+  - **ControlPersist**
+  - **DynamicForward**
+  - **EnableEscapeCommandline**
+  - **EscapeChar**
+  - **ExitOnForwardFailure**
+  - **FingerprintHash**
+  - **ForkAfterAuthentication**
+  - **ForwardAgent**
+  - **ForwardX11**
+  - **ForwardX11Timeout**
+  - **ForwardX11Trusted**
+  - **GatewayPorts**
+  - **GlobalKnownHostsFile**
+  - **GSSAPIAuthentication**
+  - **GSSAPIDelegateCredentials**
+  - **HashKnownHosts**
+  - **Host**
+  - **HostbasedAcceptedAlgorithms**
+  - **HostbasedAuthentication**
+  - **HostKeyAlgorithms**
+  - **HostKeyAlias**
+  - **Hostname**
+  - **IdentitiesOnly**
+  - **IdentityAgent**
+  - **IdentityFile**
+  - **IPQoS**
+  - **KbdInteractiveAuthentication**
+  - **KbdInteractiveDevices**
+  - **KexAlgorithms**
+  - **KnownHostsCommand**
+  - **LocalCommand**
+  - **LocalForward**
+  - **LogLevel**
+  - **MACs**
+  - **Match**
+  - **NoHostAuthenticationForLocalhost**
+  - **NumberOfPasswordPrompts**
+  - **PasswordAuthentication**
+  - **PermitLocalCommand**
+  - **PermitRemoteOpen**
+  - **PKCS11Provider**
+  - **Port**
+  - **PreferredAuthentications**
+  - **ProxyCommand**
+  - **ProxyJump**
+  - **ProxyUseFdpass**
+  - **PubkeyAcceptedAlgorithms**
+  - **PubkeyAuthentication**
+  - **RekeyLimit**
+  - **RemoteCommand**
+  - **RemoteForward**
+  - **RequestTTY**
+  - **RequiredRSASize**
+  - **SendEnv**
+  - **ServerAliveInterval**
+  - **ServerAliveCountMax**
+  - **SessionType**
+  - **SetEnv**
+  - **StdinNull**
+  - **StreamLocalBindMask**
+  - **StreamLocalBindUnlink**
+  - **StrictHostKeyChecking**
+  - **TCPKeepAlive**
+  - **Tunnel**
+  - **TunnelDevice**
+  - **UpdateHostKeys**
+  - **User**
+  - **UserKnownHostsFile**
+  - **VerifyHostKeyDNS**
+  - **VisualHostKey**
+  - **XAuthLocation**
+
+- **-P tag**: Specify a tag name that may be used to select configuration in **ssh_config(5)**. Refer to the Tag and Match keywords in **ssh_config(5)** for more information.
+- **-p port**: Port to connect to on the remote host. This can be specified on a per-host basis in the configuration file.
+- **-Q query_option**: Queries for the algorithms supported by one of the following features: **cipher** (supported symmetric ciphers), **cipher-auth** (supported symmetric ciphers that support authenticated encryption), **help** (supported query terms for use with the **-Q** flag), **mac** (supported message integrity codes), **kex** (key exchange algorithms), **key** (key types), **key-ca-sign** (valid CA signature algorithms for certificates), **key-cert** (certificate key types), **key-plain** (non-certificate key types), **key-sig** (all key types and signature algorithms), **protocol-version** (supported SSH protocol versions), and **sig** (supported signature algorithms). Alternatively, any keyword from **ssh_config(5)** or **sshd_config(5)** that takes an algorithm list may be used as an alias for the corresponding **query_option**.
+- **-q**: Quiet mode. Causes most warning and diagnostic messages to be suppressed.
+- **-R [bind_address:]port:host:hostport**
+- **-R [bind_address:]port:local_socket**
+- **-R remote_socket:host:hostport**
+- **-R remote_socket:local_socket**
+- **-R [bind_address:]port**: Specifies that connections to the given TCP port or Unix socket on the remote (server) host are to be forwarded to the local side.
+  - This works by allocating a socket to listen to either a TCP port or a Unix socket on the remote side. Whenever a connection is made to this port or Unix socket, the connection is forwarded over the secure channel, and a connection is made from the local machine to either an explicit destination specified by **host port hostport**, or **local_socket**, or, if no explicit destination was specified, **ssh** will act as a SOCKS 4/5 proxy and forward connections to the destinations requested by the remote SOCKS client.
+  - Port forwardings can also be specified in the configuration file. Privileged ports can be forwarded only when logging in as root on the remote machine. IPv6 addresses can be specified by enclosing the address in square brackets.
+  - By default, TCP listening sockets on the server will be bound to the loopback interface only. This may be overridden by specifying a **bind_address**. An empty **bind_address**, or the address ‘*’, indicates that the remote socket should listen on all interfaces. Specifying a remote **bind_address** will only succeed if the server's GatewayPorts option is enabled (see **sshd_config(5)**).
+  - If the **port** argument is ‘0’, the listen port will be dynamically allocated on the server and reported to the client at runtime. When used together with **-O forward**, the allocated port will be printed to the standard output.
+
+- **-S ctl_path**: Specifies the location of a control socket for connection sharing, or the string “none” to disable connection sharing. Refer to the description of ControlPath and ControlMaster in **ssh_config(5)** for details.
+- **-s**: May be used to request invocation of a subsystem on the remote system. Subsystems facilitate the use of SSH as a secure transport for other applications (e.g. **sftp(1)**). The subsystem is specified as the remote command. Refer to the description of SessionType in **ssh_config(5)** for details.
+- **-T**: Disable pseudo-terminal allocation.
+- **-t**: Force pseudo-terminal allocation. This can be used to execute arbitrary screen-based programs on a remote machine, which can be very useful, e.g. when implementing menu services. Multiple **-t** options force tty allocation, even if **ssh** has no local tty.
+- **-V**: Display the version number and exit.
+- **-v**: Verbose mode. Causes **ssh** to print debugging messages about its progress. This is helpful in debugging connection, authentication, and configuration problems. Multiple **-v** options increase the verbosity. The maximum is 3.
+- **-W host:port**: Requests that standard input and output on the client be forwarded to **host** on **port** over the secure channel. Implies **-N**, **-T**, ExitOnForwardFailure, and ClearAllForwardings, though these can be overridden in the configuration file or using **-o** command-line options.
+- **-w local_tun[:remote_tun]**: Requests tunnel device forwarding with the specified **tun(4)** devices between the client (**local_tun**) and the server (**remote_tun**).
+  - The devices may be specified by numerical ID or the keyword “any”, which uses the next available tunnel device. If **remote_tun** is not specified, it defaults to “any”. See also the Tunnel and TunnelDevice directives in **ssh_config(5)**.
+  - If the Tunnel directive is unset, it will be set to the default tunnel mode, which is “point-to-point”. If a different Tunnel forwarding mode is desired, then it should be specified before **-w**.
 
-Ncat is a feature-packed networking utility which reads and writes data across networks from the command line. Ncat was written for the Nmap Project and is the culmination of the currently splintered family of Netcat incarnations. It is designed to be a reliable back-end tool to instantly provide network connectivity to other applications and users. Ncat will not only work with IPv4 and IPv6 but provides the user with a virtually limitless number of potential uses.
-
-Among Ncat's vast number of features there is the ability to chain Ncats together; redirection of TCP, UDP, and SCTP ports to other sites; SSL support; and proxy connections via SOCKS4, SOCKS5 or HTTP proxies (with optional proxy authentication as well). Some general principles apply to most applications and thus give you the capability of instantly adding networking support to software that would normally never support it.
-
-## OPTIONS SUMMARY
-
-Ncat 7.95SVN (https://nmap.org/ncat)
-
-Usage: ncat [options] [hostname] [port]
-
-
-
-Options taking a time assume seconds. Append 'ms' for milliseconds, 's' for seconds, 'm' for minutes, or 'h' for hours (e.g., 500ms).
-
-- `-4` - Use IPv4 only
-- `-6` - Use IPv6 only
-- `-U, --unixsock` - Use Unix domain sockets only
-- `--vsock` - Use vsock sockets only
-- `-C, --crlf` - Use CRLF for EOL sequence
-- `-c, --sh-exec <command>` - Executes the given command via /bin/sh
-- `-e, --exec <command>` - Executes the given command
-- `--lua-exec <filename>` - Executes the given Lua script
-- `-g hop1[,hop2,...]` - Loose source routing hop points (8 max)
-- `-G <n>` - Loose source routing hop pointer (4, 8, 12, ...)
-- `-m, --max-conns <n>` - Maximum <n> simultaneous connections
-- `-h, --help` - Display this help screen
-- `-d, --delay <time>` - Wait between read/writes
-- `-o, --output <filename>` - Dump session data to a file
-- `-x, --hex-dump <filename>` - Dump session data as hex to a file
-- `-i, --idle-timeout <time>` - Idle read/write timeout
-- `-p, --source-port port` - Specify source port to use
-- `-s, --source addr` - Specify source address to use (doesn't affect -l)
-- `-l, --listen` - Bind and listen for incoming connections
-- `-k, --keep-open` - Accept multiple connections in listen mode
-- `-n, --nodns` - Do not resolve hostnames via DNS
-- `-t, --telnet` - Answer Telnet negotiations
-- `-u, --udp` - Use UDP instead of default TCP
-- `--sctp` - Use SCTP instead of default TCP
-- `-v, --verbose` - Set verbosity level (can be used several times)
-- `-w, --wait <time>` - Connect timeout
-- `-z` - Zero-I/O mode, report connection status only
-- `--append-output` - Append rather than clobber specified output files
-- `--send-only` - Only send data, ignoring received; quit on EOF
-- `--recv-only` - Only receive data, never send anything
-- `--no-shutdown` - Continue half-duplex when receiving EOF on stdin
-- `--allow` - Allow only given hosts to connect to Ncat
-- `--allowfile` - A file of hosts allowed to connect to Ncat
-- `--deny` - Deny given hosts from connecting to Ncat
-- `--denyfile` - A file of hosts denied from connecting to Ncat
-- `--broker` - Enable Ncat's connection brokering mode
-- `--chat` - Start a simple Ncat chat server
-- `--proxy <addr[:port]>` - Specify address of host to proxy through
-- `--proxy-type <type>` - Specify proxy type ("http", "socks4", "socks5")
-- `--proxy-auth <auth>` - Authenticate with HTTP or SOCKS proxy server
-- `--proxy-dns <type>` - Specify where to resolve proxy destination
-- `--ssl` - Connect or listen with SSL
-- `--ssl-cert` - Specify SSL certificate file (PEM) for listening
-- `--ssl-key` - Specify SSL private key (PEM) for listening
-- `--ssl-verify` - Verify trust and domain name of certificates
-- `--ssl-trustfile` - PEM file containing trusted SSL certificates
-- `--ssl-ciphers` - Cipherlist containing SSL ciphers to use
-- `--ssl-servername` - Request distinct server name (SNI)
-- `--ssl-alpn` - ALPN protocol list to use
-- `--version` - Display Ncat's version information and exit
-
-## CONNECT MODE AND LISTEN MODE
-
-Ncat operates in one of two primary modes: connect mode and listen mode. Other modes, such as the HTTP proxy server, act as special cases of these two. In connect mode, Ncat works as a client. In listen mode it is a server.
-
-In connect mode, the hostname and port arguments tell what to connect to. hostname is required, and may be a hostname or IP address. If port is supplied, it must be a decimal port number. If omitted, it defaults to 31337.
-
-In listen mode, hostname and port control the address the server will bind to. Both arguments are optional in listen mode. If hostname is omitted, it defaults to listening on all available addresses over IPv4 and IPv6. If port is omitted, it defaults to 31337.
-
-## PROTOCOL OPTIONS
-
-- `-4 (IPv4 only)` - Force the use of IPv4 only.
-- `-6 (IPv6 only)` - Force the use of IPv6 only.
-- `-U, --unixsock (Use Unix domain sockets)` - Use Unix domain sockets rather than network sockets. This option may be used on its own for stream sockets, or combined with --udp for datagram sockets. A description of -U mode is in the section called “UNIX DOMAIN SOCKETS”.
-- `-u, --udp (Use UDP)` - Use UDP for the connection (the default is TCP).
-- `--sctp (Use SCTP)` - Use SCTP for the connection (the default is TCP). SCTP support is implemented in TCP-compatible mode.
-- `--vsock (Use AF_VSOCK sockets)` - Use AF_VSOCK sockets rather than the default TCP sockets (Linux only). This option may be used on its own for stream sockets or combined with --udp for datagram sockets. A description of --vsock mode is in the section called “AF_VSOCK SOCKETS”.
+- **-X**: Enables X11 forwarding. This can also be specified on a per-host basis in a configuration file.
+  - X11 forwarding should be enabled with caution. Users with the ability to bypass file permissions on the remote host (for the user's X authorization database) can access the local X11 display through the forwarded connection. An attacker may then be able to perform activities such as keystroke monitoring.
+  - For this reason, X11 forwarding is subjected to X11 SECURITY extension restrictions by default. Refer to the **ssh -Y** option and the ForwardX11Trusted directive in **ssh_config(5)** for more information.
 
-## CONNECT MODE OPTIONS
+- **-x**: Disables X11 forwarding.
+- **-Y**: Enables trusted X11 forwarding. Trusted X11 forwardings are not subjected to the X11 SECURITY extension controls.
+- **-y**: Send log information using the **syslog(3)** system module. By default, this information is sent to stderr.
 
-- `-g hop1[,hop2,...] (Loose source routing)` - Sets hops for IPv4 loose source routing. You can use -g once with a comma-separated list of hops, use -g multiple times with single hops to build the list, or combine the two. Hops can be given as IP addresses or hostnames.
-- `-G ptr (Set source routing pointer)` - Sets the IPv4 source route “pointer” for use with -g. The argument must be a multiple of 4 and no more than 28. Not all operating systems support setting this pointer to anything other than four.
-- `-p port, --source-port port (Specify source port)` - Set the port number for Ncat to bind to.
-- `-s host, --source host (Specify source address)` - Set the address for Ncat to bind to.
+**ssh** may additionally obtain configuration data from a per-user configuration file and a system-wide configuration file. The file format and configuration options are described in **ssh_config(5)**.
 
-## LISTEN MODE OPTIONS
+## AUTHENTICATION
+The OpenSSH SSH client supports SSH protocol 2.
 
-See the section called “ACCESS CONTROL OPTIONS” for information on limiting the hosts that may connect to the listening Ncat process.
+The methods available for authentication are: GSSAPI-based authentication, host-based authentication, public key authentication, keyboard-interactive authentication, and password authentication. Authentication methods are tried in the order specified above, though PreferredAuthentications can be used to change the default order.
 
-- `-l, --listen (Listen for connections)` - Listen for connections rather than connecting to a remote machine
-- `-m numconns, --max-conns numconns (Specify maximum number of connections)` - The maximum number of simultaneous connections accepted by an Ncat instance. 100 is the default (60 on Windows).
-- `-k, --keep-open (Accept multiple connections)` - Normally a listening server accepts only one connection and then quits when the connection is closed. This option makes it accept multiple simultaneous connections and wait for more connections after they have all been closed. It must be combined with --listen. In this mode there is no way for Ncat to know when its network input is finished, so it will keep running until interrupted. This also means that it will never close its output stream, so any program reading from Ncat and looking for end-of-file will also hang.
-- `--broker (Connection brokering)` - Allow multiple parties to connect to a centralised Ncat server and communicate with each other. Ncat can broker communication between systems that are behind a NAT or otherwise unable to directly connect. This option is used in conjunction with --listen, which causes the --listen port to have broker mode enabled.
-- `--chat (Ad-hoc “chat server”)` - The --chat option enables chat mode, intended for the exchange of text between several users. In chat mode, connection brokering is turned on. Ncat prefixes each message received with an ID before relaying it to the other connections. The ID is unique for each connected client. This helps distinguish who sent what. Additionally, non-printing characters such as control characters are escaped to keep them from doing damage to a terminal.
+Host-based authentication works as follows: If the machine the user logs in from is listed in /etc/hosts.equiv or /etc/shosts.equiv on the remote machine, the user is non-root and the user names are the same on both sides, or if the files ~/.rhosts or ~/.shosts exist in the user's home directory on the remote machine and contain a line containing the name of the client machine and the name of the user on that machine, the user is considered for login. Additionally, the server must be able to verify the client's host key (see the description of /etc/ssh/ssh_known_hosts and ~/.ssh/known_hosts, below) for login to be permitted. This authentication method closes security holes due to IP spoofing, DNS spoofing, and routing spoofing. **Note to the administrator**: /etc/hosts.equiv, ~/.rhosts, and the rlogin/rsh protocol in general, are inherently insecure and should be disabled if security is desired.
 
-## SSL OPTIONS
+Public key authentication works as follows: The scheme is based on public-key cryptography, using cryptosystems where encryption and decryption are done using separate keys, and it is unfeasible to derive the decryption key from the encryption key. The idea is that each user creates a public/private key pair for authentication purposes. The server knows the public key, and only the user knows the private key. **ssh** implements public key authentication protocol automatically, using one of the DSA, ECDSA, Ed25519, or RSA algorithms. The HISTORY section of **ssl(8)** contains a brief discussion of the DSA and RSA algorithms.
 
-- `--ssl (Use SSL)` - In connect mode, this option transparently negotiates an SSL session with an SSL server to securely encrypt the connection. This is particularly handy for talking to SSL enabled HTTP servers, etc.
-- `--ssl-verify (Verify server certificates)` - In client mode, --ssl-verify is like --ssl except that it also requires verification of the server certificate. Ncat comes with a default set of trusted certificates in the file ca-bundle.crt.  Some operating systems provide a default list of trusted certificates; these will also be used if available. Use --ssl-trustfile to give a custom list. Use -v one or more times to get details about verification failures. Ncat does not check for revoked certificates.
-- `--ssl-cert certfile.pem (Specify SSL certificate)` - This option gives the location of a PEM-encoded certificate files used to authenticate the server (in listen mode) or the client (in connect mode). Use it in combination with --ssl-key.
-- `--ssl-key keyfile.pem (Specify SSL private key)` - This option gives the location of the PEM-encoded private key file that goes with the certificate named with --ssl-cert.
-- `--ssl-trustfile cert.pem (List trusted certificates)` - This option sets a list of certificates that are trusted for purposes of certificate verification. It has no effect unless combined with --ssl-verify. The argument to this option is the name of a PEM file containing trusted certificates. Typically, the file will contain certificates of certification authorities, though it may also contain server certificates directly. When this option is used, Ncat does not use its default certificates.
-- `--ssl-ciphers cipherlist (Specify SSL ciphersuites)` - This option sets the list of ciphersuites that Ncat will use when connecting to servers or when accepting SSL connections from clients. The syntax is described in the OpenSSL ciphers(1) man page, and defaults to ALL:!aNULL:!eNULL:!LOW:!EXP:!RC4:!MD5:@STRENGTH
-- `--ssl-servername name (Request distinct server name)` - In client mode, this option sets the TLS SNI (Server Name Indication) extension, which tells the server the name of the logical server Ncat is contacting. This is important when the target server hosts multiple virtual servers at a single underlying network address. If the option is not provided, the TLS SNI extension will be populated with the target server hostname.
-- `--ssl-alpn ALPN list (Specify ALPN protocol list)` - This option allows you to specify a comma-separated list of protocols to send via the Application-Layer Protocol Negotiation (ALPN) TLS extension. Not supported by all versions of OpenSSL.
+The file ~/.ssh/authorized_keys lists the public keys that are permitted for logging in. When the user logs in, the **ssh** program tells the server which key pair it would like to use for authentication. The client proves that it has access to the private key and the server checks that the corresponding public key is authorized to accept the account.
 
-## PROXY OPTIONS
+The server may inform the client of errors that prevented public key authentication from succeeding after authentication completes using a different method. These may be viewed by increasing the LogLevel to DEBUG or higher (e.g. by using the **-v** flag).
 
-- `--proxy host[:port] (Specify proxy address)` - Requests proxying through host:port, using the protocol specified by --proxy-type.
-- `--proxy-type proto (Specify proxy protocol)` - In connect mode, this option requests the protocol proto to connect through the proxy host specified by --proxy. In listen mode, this option has Ncat act as a proxy server using the specified protocol.
-- `--proxy-auth user[:pass] (Specify proxy credentials)` - In connect mode, gives the credentials that will be used to connect to the proxy server. In listen mode, gives the credentials that will be required of connecting clients. For use with --proxy-type http or --proxy-type socks5, the form should be username:password. For --proxy-type socks4, it should be a username only.
-- `--proxy-dns type (Specify where to resolve proxy destination)` - In connect mode, it provides control over whether proxy destination hostnames are resolved by the remote proxy server or locally, by Ncat itself. Possible values for type are:
-  - local - Hostnames are resolved locally on the Ncat host. Ncat exits with error if the hostname cannot be resolved.
-  - remote - Hostnames are passed directly onto the remote proxy server. This is the default behavior.
-  - both - Hostname resolution is first attempted on the Ncat host. Unresolvable hostnames are passed onto the remote proxy server.
-  - none - Hostname resolution is completely disabled. Only a literal IPv4 or IPv6 address can be used as the proxy destination.
+The user creates their key pair by running **ssh-keygen(1)**. This stores the private key in ~/.ssh/id_dsa (DSA), ~/.ssh/id_ecdsa (ECDSA), ~/.ssh/id_ecdsa_sk (authenticator-hosted ECDSA), ~/.ssh/id_ed25519 (Ed25519), ~/.ssh/id_ed25519_sk (authenticator-hosted Ed25519), or ~/.ssh/id_rsa (RSA) and stores the public key in ~/.ssh/id_dsa.pub (DSA), ~/.ssh/id_ecdsa.pub (ECDSA), ~/.ssh/id_ecdsa_sk.pub (authenticator-hosted ECDSA), ~/.ssh/id_ed25519.pub (Ed25519), ~/.ssh/id_ed25519_sk.pub (authenticator-hosted Ed25519), or ~/.ssh/id_rsa.pub (RSA) in the user's home directory. The user should then copy the public key to ~/.ssh/authorized_keys in their home directory on the remote machine. The **authorized_keys** file corresponds to the conventional ~/.rhosts file and has one key per line, though the lines can be very long. After this, the user can log in without giving the password.
 
-## COMMAND EXECUTION OPTIONS
+A variation on public key authentication is available in the form of certificate authentication: instead of a set of public/private keys, signed certificates are used. This has the advantage that a single trusted certification authority can be used in place of many public/private keys. See the CERTIFICATES section of **ssh-keygen(1)** for more information.
 
-- `-e command, --exec command (Execute command)` - Execute the specified command after a connection has been established. The command must be specified as a full pathname. All input from the remote client will be sent to the application and responses sent back to the remote client over the socket, thus making your command-line application interactive over a socket. Combined with --keep-open, Ncat will handle multiple simultaneous connections to your specified port/application like inetd. Ncat will only accept a maximum, definable, number of simultaneous connections controlled by the -m option. By default this is set to 100 (60 on Windows).
-- `-c command, --sh-exec command (Execute command via sh)` - Same as -e, except it tries to execute the command via /bin/sh. This means you don't have to specify the full path for the command, and shell facilities like environment variables are available.
-- `--lua-exec file (Execute a .lua script)` - Runs the specified file as a Lua script after a connection has been established, using a built-in interpreter. Both the script's standard input and the standard output are redirected to the connection data streams.
+The most convenient way to use public key or certificate authentication may be with an authentication agent. See **ssh-agent(1)** and (optionally) the AddKeysToAgent directive in **ssh_config(5)** for more information.
 
-All exec options add the following variables to the child's environment:
+Keyboard-interactive authentication works as follows: The server sends an arbitrary "challenge" text and prompts for a response, possibly multiple times. Examples of keyboard-interactive authentication include BSD Authentication (see **login.conf(5)**) and PAM (some non-OpenBSD systems).
 
-- NCAT_REMOTE_ADDR, NCAT_REMOTE_PORT - The IP address and port number of the remote host. In connect mode, it's the target's address; in listen mode, it's the client's address.
-- NCAT_LOCAL_ADDR, NCAT_LOCAL_PORT - The IP address and port number of the local end of the connection.
-- NCAT_PROTO - The protocol in use: one of TCP, UDP, and SCTP.
+Finally, if other authentication methods fail, **ssh** prompts the user for a password. The password is sent to the remote host for checking; however, since all communications are encrypted, the password cannot be seen by someone listening on the network.
 
-## ACCESS CONTROL OPTIONS
+**ssh** automatically maintains and checks a database containing identification for all hosts it has ever been used with. Host keys are stored in ~/.ssh/known_hosts in the user's home directory. Additionally, the file /etc/ssh/ssh_known_hosts is automatically checked for known hosts. Any new hosts are automatically added to the user's file. If a host's identification ever changes, **ssh** warns about this and disables password authentication to prevent server spoofing or man-in-the-middle attacks, which could otherwise be used to circumvent the encryption. The StrictHostKeyChecking option can be used to control logins to machines whose host key is not known or has changed.
 
-- `--allow host[,host,...] (Allow connections)` - The list of hosts specified will be the only hosts allowed to connect to the Ncat process. All other connection attempts will be disconnected. In case of a conflict between --allow and --deny, --allow takes precedence. Host specifications follow the same syntax used by Nmap.
-- `--allowfile file (Allow connections from file)` - This has the same functionality as --allow, except that the allowed hosts are provided in a new-line delimited allow file, rather than directly on the command line.
-- `--deny host[,host,...] (Deny connections)` - Issue Ncat with a list of hosts that will not be allowed to connect to the listening Ncat process. Specified hosts will have their session silently terminated if they try to connect. In case of a conflict between --allow and --deny, --allow takes precedence. Host specifications follow the same syntax used by Nmap.
-- `--denyfile file (Deny connections from file)` - This is the same functionality as --deny, except that excluded hosts are provided in a new-line delimited deny file, rather than directly on the command line.
+When the user's identity has been accepted by the server, the server either executes the given command in a non-interactive session or, if no command has been specified, logs into the machine and gives the user a normal shell as an interactive session. All communication with the remote command or shell will be automatically encrypted.
 
-## TIMING OPTIONS
+If an interactive session is requested, **ssh** by default will only request a pseudo-terminal (pty) for interactive sessions when the client has one. The flags **-T** and **-t** can be used to override this behavior.
 
-These options accept a time parameter. This is specified in seconds by default, though you can append ms, s, m, or h to the value to specify milliseconds, seconds, minutes, or hours.
+If a pseudo-terminal has been allocated, the user may use the escape characters noted below.
 
-- `-d time, --delay time (Specify line delay)` - Set the delay interval for lines sent. This effectively limits the number of lines that Ncat will send in the specified period. This may be useful for low-bandwidth sites, or have other uses such as coping with annoying iptables --limit options.
-- `-i time, --idle-timeout time (Specify idle timeout)` - Set a fixed timeout for idle connections. If the idle timeout is reached, the connection is terminated.
-- `-w time, --wait time (Specify connect timeout)` - Set a fixed timeout for connection attempts.
+If no pseudo-terminal has been allocated, the session is transparent and can be used to reliably transfer binary data. On most systems, setting the escape character to “none” will also make the session transparent even if a tty is used.
 
-## OUTPUT OPTIONS
+The session terminates when the command or shell on the remote machine exits and all X11 and TCP connections have been closed.
 
-- `-o file, --output file (Save session data)` - Dump session data to a file
-- `-x file, --hex-dump file (Save session data in hex)` - Dump session data in hex to a file.
-- `--append-output (Append output)` - Issue Ncat with --append-ouput along with -o and/or -x and it will append the resulted output rather than truncating the specified output files.
+## ESCAPE CHARACTERS
+When a pseudo-terminal has been requested, **ssh** supports a number of functions through the use of an escape character.
 
-## MISC OPTIONS
+A single tilde character can be sent as **~~** or by following the tilde by a character other than those described below. The escape character must always follow a newline to be interpreted as special. The escape character can be changed in configuration files using the EscapeChar configuration directive or on the command line by the **-e** option.
 
-- `-C, --crlf (Use CRLF as EOL)` - This option tells Ncat to convert LF line endings to CRLF when taking input from standard input. This is useful for talking to some stringent servers directly from a terminal in one of the many common plain-text protocols that use CRLF for end-of-line.
-- `-h, --help (Help screen)` - Displays a short help screen with common options and parameters, and then exits.
-- `--recv-only (Only receive data)` - If this option is passed, Ncat will only receive data and will not try to send anything.
-- `--send-only (Only send data)` - If this option is passed, then Ncat will only send data and will ignore anything received. This option also causes Ncat to close the network connection and terminate after EOF is received on standard input.
-- `--no-shutdown (Do not shutdown into half-duplex mode)` - If this option is passed, Ncat will not invoke shutdown on a socket after seeing EOF on stdin. This is provided for backward-compatibility with OpenBSD netcat, which exhibits this behavior when executed with its '-d' option.
-- `-n, --nodns (Do not resolve hostnames)` - Completely disable hostname resolution across all Ncat options, such as the destination, source address, source routing hops, and the proxy. All addresses must be specified numerically. (Note that resolution of proxy destinations is controlled separately via option --proxy-dns.)
-- `-t, --telnet (Answer Telnet negotiations)` - Handle DO/DONT WILL/WONT Telnet negotiations. This makes it possible to script Telnet sessions with Ncat.
-- `--version (Display version)` - Displays the Ncat version number and exits.
+The supported escapes (assuming the default ‘~’) are:
 
-## UNIX DOMAIN SOCKETS
+- **~.**: Disconnect.
+- **~^Z**: Background **ssh**.
+- **~#**: List forwarded connections.
+- **~&**: Background **ssh** at logout when waiting for forwarded connection / X11 sessions to terminate.
+- **~?**: Display a list of escape characters.
+- **~B**: Send a BREAK to the remote system (only useful if the peer supports it).
+- **~C**: Open command line. Currently, this allows the addition of port forwardings using the **-L**, **-R**, and **-D** options (see above). It also allows the cancellation of existing port-forwardings with **-KL[bind_address:]port** for local, **-KR[bind_address:]port** for remote, and **-KD[bind_address:]port** for dynamic port-forwardings. **!command** allows the user to execute a local command if the PermitLocalCommand option is enabled in **ssh_config(5)**. Basic help is available, using the **-h** option.
+- **~R**: Request rekeying of the connection (only useful if the peer supports it).
+- **~V**: Decrease the verbosity (LogLevel) when errors are being written to stderr.
+- **~v**: Increase the verbosity (LogLevel) when errors are being written to stderr.
 
-The -U option (same as --unixsock) causes Ncat to use Unix domain sockets rather than network sockets. Unix domain sockets exist as an entry in the filesystem. You must give the name of a socket to connect to or to listen on. For example, to make a connection,
+## TCP FORWARDING
+Forwarding of arbitrary TCP connections over a secure channel can be specified either on the command line or in a configuration file. One possible application of TCP forwarding is a secure connection to a mail server; another is going through firewalls.
 
-ncat -U ~/unixsock
+In the example below, we look at encrypting communication for an IRC client, even though the IRC server it connects to does not directly support encrypted communication. This works as follows: the user connects to the remote host using **ssh**, specifying the ports to be used to forward the connection. After that, it is possible to start the program locally, and **ssh** will encrypt and forward the connection to the remote server.
 
+The following example tunnels an IRC session from the client to an IRC server at “server.example.com”, joining channel “#users”, nickname “pinky”, using the standard IRC port, 6667:
 
-To listen on a socket:
+```sh
+$ ssh -f -L 6667:localhost:6667 server.example.com sleep 10
+$ irc -c '#users' pinky IRC/127.0.0.1
 
-ncat -l -U ~/unixsock
+The -f option backgrounds ssh and the remote command “sleep 10” is specified to allow an amount of time (10 seconds, in the example) to start the program which is going to use the tunnel. If no connections are made within the time specified, ssh will exit.
 
+## X11 FORWARDING
+If the ForwardX11 variable is set to “yes” (or see the description of the -X, -x, and -Y options above) and the user is using X11 (the DISPLAY environment variable is set), the connection to the X11 display is automatically forwarded to the remote side in such a way that any X11 programs started from the shell (or command) will go through the encrypted channel, and the connection to the real X server will be made from the local machine. The user should not manually set DISPLAY. Forwarding of X11 connections can be configured on the command line or in configuration files.
 
-Listen mode will create the socket if it doesn't exist. The socket will continue to exist after the program ends.
+The DISPLAY value set by ssh will point to the server machine, but with a display number greater than zero. This is normal and happens because ssh creates a “proxy” X server on the server machine for forwarding the connections over the encrypted channel.
 
-Both stream and datagram domain sockets are supported. Use -U on its own for stream sockets, or combine it with --udp for datagram sockets. Datagram sockets require a source socket to connect from. By default, a source socket with a random filename will be created as needed, and deleted when the program ends. Use the --source with a path to use a source socket with a specific name.
+ssh will also automatically set up Xauthority data on the server machine. For this purpose, it will generate a random authorization cookie, store it in Xauthority on the server, and verify that any forwarded connections carry this cookie and replace it with the real cookie when the connection is opened. The real authentication cookie is never sent to the server machine (and no cookies are sent in the plain).
 
-## AF_VSOCK SOCKETS
+If the ForwardAgent variable is set to “yes” (or see the description of the -A and -a options above) and the user is using an authentication agent, the connection to the agent is automatically forwarded to the remote side.
 
-The --vsock option causes Ncat to use AF_VSOCK sockets rather than network sockets. A CID must be given instead of a hostname or IP address. For example, to make a connection to the host,
+## VERIFYING HOST KEYS
+When connecting to a server for the first time, a fingerprint of the server's public key is presented to the user (unless the option StrictHostKeyChecking has been disabled). Fingerprints can be determined using ssh-keygen(1):
 
-ncat --vsock 2 1234
+$ ssh-keygen -l -f /etc/ssh/ssh_host_rsa_key
 
+If the fingerprint is already known, it can be matched and the key can be accepted or rejected. If only legacy (MD5) fingerprints for the server are available, the ssh-keygen(1) -E option may be used to downgrade the fingerprint algorithm to match.
 
-To listen on a socket:
+Because of the difficulty of comparing host keys just by looking at fingerprint strings, there is also support to compare host keys visually, using random art. By setting the VisualHostKey option to “yes”, a small ASCII graphic gets displayed on every login to a server, no matter if the session itself is interactive or not. By learning the pattern a known server produces, a user can easily find out that the host key has changed when a completely different pattern is displayed. Because these patterns are not unambiguous however, a pattern that looks similar to the pattern remembered only gives a good probability that the host key is the same, not guaranteed proof.
 
-ncat -l --vsock 1234
+To get a listing of the fingerprints along with their random art for all known hosts, the following command line can be used:
 
+$ ssh-keygen -lv -f ~/.ssh/known_hosts
 
-Both stream and datagram domain sockets are supported, but socket type availability depends on the hypervisor. Use --vsock on its own for stream sockets, or combine it with --udp for datagram sockets.
+If the fingerprint is unknown, an alternative method of verification is available: SSH fingerprints verified by DNS. An additional resource record (RR), SSHFP, is added to a zone file and the connecting client is able to match the fingerprint with that of the key presented.
 
-## EXAMPLES
+In this example, we are connecting a client to a server, “host.example.com”. The SSHFP resource records should first be added to the zone file for host.example.com:
 
-- Connect to example.org on TCP port 8080.
+$ ssh-keygen -r host.example.com.
 
-ncat example.org 8080
+The output lines will have to be added to the zone file. To check that the zone is answering fingerprint queries:
 
-- Listen for connections on TCP port 8080.
+$ dig -t SSHFP host.example.com
 
-ncat -l 8080
+Finally, the client connects:
 
-- Redirect TCP port 8080 on the local machine to host on port 80.
+$ ssh -o "VerifyHostKeyDNS ask" host.example.com
+[...]
+Matching host key fingerprint found in DNS.
+Are you sure you want to continue connecting (yes/no)?
 
-ncat --sh-exec "ncat example.org 80" -l 8080 --keep-open
+See the VerifyHostKeyDNS option in ssh_config(5) for more information.
 
-- Bind to TCP port 8081 and attach /bin/bash for the world to access freely.
+## SSH-BASED VIRTUAL PRIVATE NETWORKS
+ssh contains support for Virtual Private Network (VPN) tunneling using the tun(4) network pseudo-device, allowing two networks to be joined securely. The sshd_config(5) configuration option PermitTunnel controls whether the server supports this, and at what level (layer 2 or 3 traffic).
 
-ncat --exec "/bin/bash" -l 8081 --keep-open
+The following example would connect client network 10.0.50.0/24 with the remote network 10.0.99.0/24 using a point-to-point connection from 10.1.1.1 to 10.1.1.2, provided that the SSH server running on the gateway to the remote network, at 192.168.1.15, allows it.
 
-- Bind a shell to TCP port 8081, limit access to hosts on a local network, and limit the maximum number of simultaneous connections to 3.
+On the client:
 
-ncat --exec "/bin/bash" --max-conns 3 --allow 192.168.0.0/24 -l 8081 --keep-open
+# ssh -f -w 0:1 192.168.1.15 true
+# ifconfig tun0 10.1.1.1 10.1.1.2 netmask 255.255.255.252
+# route add 10.0.99.0/24 10.1.1.2
 
-- Connect to smtphost:25 through a SOCKS4 server on port 1080.
+On the server
 
-ncat --proxy socks4host --proxy-type socks4 --proxy-auth joe smtphost 25
+# ifconfig tun1 10.1.1.2 10.1.1.1 netmask 255.255.255.252
+# route add 10.0.50.0/24 10.1.1.1
 
-- Connect to smtphost:25 through a SOCKS5 server on port 1080.
+Client access may be more finely tuned via the /root/.ssh/authorized_keys file (see below) and the PermitRootLogin server option. The following entry would permit connections on tun(4) device 1 from user “jane” and on tun device 2 from user “john”, if PermitRootLogin is set to “forced-commands-only”:
 
-ncat --proxy socks5host --proxy-type socks5 --proxy-auth joe
-smtphost 25
+tunnel="1",command="sh /etc/netstart tun1" ssh-rsa ... jane
+tunnel="2",command="sh /etc/netstart tun2" ssh-rsa ... john
 
-- Create an HTTP proxy server on localhost port 8888.
+Since an SSH-based setup entails a fair amount of overhead, it may be more suited to temporary setups, such as for wireless VPNs. More permanent VPNs are better provided by tools such as ipsecctl(8) and isakmpd(8).
 
-ncat -l --proxy-type http localhost 8888
+## ENVIRONMENT
+ssh will normally set the following environment variables:
 
-- Send a file over TCP port 9899 from host2 (client) to host1 (server).
+DISPLAY: The DISPLAY variable indicates the location of the X11 server. It is automatically set by ssh to point to a value of the form “hostname
+”, where “hostname” indicates the host where the shell runs, and ‘n’ is an integer ≥ 1. ssh uses this special value to forward X11 connections over the secure channel. The user should normally not set DISPLAY explicitly, as that will render the X11 connection insecure (and will require the user to manually copy any required authorization cookies).
 
-HOST1$ ncat -l 9899 > outputfile
+HOME: Set to the path of the user's home directory.
 
-HOST2$ ncat HOST1 9899 < inputfile
+LOGNAME: Synonym for USER; set for compatibility with systems that use this variable.
 
-- Transfer in the other direction, turning Ncat into a “one file” server.
+MAIL: Set to the path of the user's mailbox.
 
-HOST1$ ncat -l 9899 < inputfile
+PATH: Set to the default PATH, as specified when compiling ssh.
 
-HOST2$ ncat HOST1 9899 > outputfile
+SSH_ASKPASS: If ssh needs a passphrase, it will read the passphrase from the current terminal if it was run from a terminal. If ssh does not have a terminal associated with it but DISPLAY and SSH_ASKPASS are set, it will execute the program specified by SSH_ASKPASS and open an X11 window to read the passphrase. This is particularly useful when calling ssh from a .xsession or related script. (Note that on some machines it may be necessary to redirect the input from /dev/null to make this work.)
 
+SSH_ASKPASS_REQUIRE: Allows further control over the use of an askpass program. If this variable is set to “never” then ssh will never attempt to use one. If it is set to “prefer”, then ssh will prefer to use the askpass program instead of the TTY when requesting passwords. Finally, if the variable is set to “force”, then the askpass program will be used for all passphrase input regardless of whether DISPLAY is set.
 
-## EXIT CODE
+SSH_AUTH_SOCK: Identifies the path of a Unix-domain socket used to communicate with the agent.
 
-The exit code reflects whether a connection was made and completed successfully. 0 means there was no error. 1 means there was a network error of some kind, for example “Connection refused” or “Connection reset”. 2 is reserved for all other errors, like an invalid option or a nonexistent file.
+SSH_CONNECTION: Identifies the client and server ends of the connection. The variable contains four space-separated values: client IP address, client port number, server IP address, and server port number.
 
-## BUGS
+SSH_ORIGINAL_COMMAND: This variable contains the original command line if a forced command is executed. It can be used to extract the original arguments.
 
-Like its authors, Ncat isn't perfect. But you can help make it better by sending bug reports or even writing patches. If Ncat doesn't behave the way you expect, first upgrade to the latest version available from https://nmap.org. If the problem persists, do some research to determine whether it has already been discovered and addressed. Try Googling the error message or browsing the nmap-dev archives at https://seclists.org/.
+SSH_TTY: This is set to the name of the tty (path to the device) associated with the current shell or command. If the current session has no tty, this variable is not set.
 
-Read this full manual page as well. If nothing comes of this, mail a bug report to <dev@nmap.org>. Please include everything you have learned about the problem, as well as what version of Ncat you are running and what operating system version it is running on. Problem reports and Ncat usage questions sent to dev@nmap.org are far more likely to be answered than those sent to Fyodor directly.
+SSH_TUNNEL: Optionally set by sshd(8) to contain the interface names assigned if tunnel forwarding was requested by the client.
 
-Code patches to fix bugs are even better than bug reports. Basic instructions for creating patch files with your changes are available at https://svn.nmap.org/nmap/HACKING. Patches may be sent to nmap-dev (recommended) or to Fyodor directly.
+SSH_USER_AUTH: Optionally set by sshd(8), this variable may contain a pathname to a file that lists the authentication methods successfully used when the session was established, including any public keys that were used.
 
-## AUTHORS
+TZ: This variable is set to indicate the present time zone if it was set when the daemon was started (i.e. the daemon passes the value on to new connections).
 
-- Chris Gibson <chris@linuxops.net>
-- Gordon Lyon (Fyodor) <fyodor@nmap.org> (http://insecure.org)
-- Kris Katterjohn <katterjohn@gmail.com>
-- Mixter <mixter@gmail.com>
+USER: Set to the name of the user logging in.
 
-The original Netcat was written by *Hobbit* <hobbit@avian.org>. While Ncat isn't built on any code from the “traditional” Netcat (or any other implementation), Ncat is most definitely based on Netcat in spirit and functionality.
+Additionally, ssh reads ~/.ssh/environment and adds lines of the format “VARNAME=value” to the environment if the file exists and users are allowed to change their environment. For more information, see the PermitUserEnvironment option in sshd_config(5).
 
-## LEGAL NOTICES
+## FILES
+~/.rhosts: This file is used for host-based authentication (see above). On some machines, this file may need to be world-readable if the user's home directory is on an NFS partition because sshd(8) reads it as root. Additionally, this file must be owned by the user and must not have write permissions for anyone else. The recommended permission for most machines is read/write for the user and not accessible by others.
+~/.shosts: This file is used in exactly the same way as .rhosts but allows host-based authentication without permitting login with rlogin/rsh.
+~/.ssh/: This directory is the default location for all user-specific configuration and authentication information. There is no general requirement to keep the entire contents of this directory secret, but the recommended permissions are read/write/execute for the user and not accessible by others.
+~/.ssh/authorized_keys: Lists the public keys (DSA, ECDSA, Ed25519, RSA) that can be used for logging in as this user. The format of this file is described in the sshd(8) manual page. This file is not highly sensitive, but the recommended permissions are read/write for the user and not accessible by others.
+~/.ssh/config: This is the per-user configuration file. The file format and configuration options are described in ssh_config(5). Because of the potential for abuse, this file must have strict permissions: read/write for the user and not writable by others.
+~/.ssh/environment: Contains additional definitions for environment variables; see “ENVIRONMENT”, above.
+~/.ssh/id_dsa
+~/.ssh/id_ecdsa
+~/.ssh/id_ecdsa_sk
+~/.ssh/id_ed25519
+~/.ssh/id_ed25519_sk
+~/.ssh/id_rsa: Contains the private key for authentication. These files contain sensitive data and should be readable by the user but not accessible by others (read/write/execute). ssh will simply ignore a private key file if it is accessible by others. It is possible to specify a passphrase when generating the key which will be used to encrypt the sensitive part of this file using AES-128.
+~/.ssh/id_dsa.pub
+~/.ssh/id_ecdsa.pub
+~/.ssh/id_ecdsa_sk.pub
+~/.ssh/id_ed25519.pub
+~/.ssh/id_ed25519_sk.pub
+~/.ssh/id_rsa.pub: Contains the public key for authentication. These files are not sensitive and can (but need not) be readable by anyone.
+~/.ssh/known_hosts: Contains a list of host keys for all hosts the user has logged into that are not already in the systemwide list of known host keys. See sshd(8) for further details of the format of this file.
+~/.ssh/rc: Commands in this file are executed by ssh when the user logs in, just before the user's shell (or command) is started. See the sshd(8) manual page for more information.
+/etc/hosts.equiv: This file is for host-based authentication (see above). It should only be writable by root.
+/etc/shosts.equiv: This file is used in exactly the same way as hosts.equiv but allows host-based authentication without permitting login with rlogin/rsh.
+/etc/ssh/ssh_config: Systemwide configuration file. The file format and configuration options are described in ssh_config(5).
+/etc/ssh/ssh_host_key
+/etc/ssh/ssh_host_dsa_key
+/etc/ssh/ssh_host_ecdsa_key
+/etc/ssh/ssh_host_ed25519_key
+/etc/ssh/ssh_host_rsa_key: These files contain the private parts of the host keys and are used for host-based authentication.
+/etc/ssh/ssh_known_hosts: Systemwide list of known host keys. This file should be prepared by the system administrator to contain the public host keys of all machines in the organization. It should be world-readable. See sshd(8) for further details of the format of this file.
+/etc/ssh/sshrc: Commands in this file are executed by ssh when the user logs in, just before the user's shell (or command) is started. See the sshd(8) manual page for more information.
+## EXIT STATUS
+ssh exits with the exit status of the remote command or with 255 if an error occurred.
 
-Ncat Copyright and Licensing: Ncat is (C) 2005–2022 Nmap Software LLC. It is distributed as free and open source software under the same license terms as our Nmap software. Precise terms and further details are available from https://nmap.org/man/man-legal.html.
+## SEE ALSO
+scp(1), sftp(1), ssh-add(1), ssh-agent(1), ssh-keygen(1), ssh-keyscan(1), tun(4), ssh_config(5), ssh-keysign(8), sshd(8)
 
-Creative Commons License for this Ncat Guide: This Ncat Reference Guide is (C) 2005–2022 Nmap Software LLC. It is hereby placed under version 3.0 of the Creative Commons Attribution License[1]. This allows you redistribute and modify the work as you desire, as long as you credit the original source. Alternatively, you may choose to treat this document as falling under the same license as Ncat itself (discussed previously).
-
-Source Code Availability and Community Contributions: Source is provided to this software because we believe users have a right to know exactly what a program is going to do before they run it. This also allows you to audit the software for security holes (none have been found so far).
-
-Source code also allows you to port Nmap (which includes Ncat) to new platforms, fix bugs, and add new features. You are highly encouraged to send your changes to <dev@nmap.org> for possible incorporation into the main distribution. By sending these changes to Fyodor or one of the Insecure.Org development mailing lists, it is assumed that you are offering the Nmap Project (Nmap Software LLC) the unlimited, non-exclusive right to reuse, modify, and relicense the code. Nmap will always be available open source, but this is important because the inability to relicense code has caused devastating problems for other Free Software projects (such as KDE and NASM). We also occasionally relicense the code to third parties as discussed in the Nmap man page. If you wish to specify special license conditions of your contributions, just say so when you send them.
-
-No Warranty: This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the Nmap Public Source License for more details at https://nmap.org/npsl/, or in the LICENSE file included with Nmap.
-
-Inappropriate Usage: Ncat should never be installed with special privileges (e.g. suid root). That would open up a major security vulnerability as other users on the system (or attackers) could use it for privilege escalation.
-
-Third-Party Software: This product includes software developed by the Apache Software Foundation[2]. A modified version of the Libpcap portable packet capture library[3] is distributed along with Ncat. The Windows version of Ncat utilized the Libpcap-derived Npcap library[4] instead. Certain raw networking functions use the Libdnet[5] networking library, which was written by Dug Song. A modified version is distributed with Ncat. Ncat can optionally link with the OpenSSL cryptography toolkit[6] for SSL version detection support. All of the third-party software described in this paragraph is freely redistributable under BSD-style software licenses.
-
-## NOTES
-
-1. Creative Commons Attribution License: http://creativecommons.org/licenses/by/3.0/
-2. Apache Software Foundation: http://www.apache.org
-3. Libpcap portable packet capture library: http://www.tcpdump.org
-4. Npcap library: https://npcap.com
-5. Libdnet: http://libdnet.sourceforge.net
-6. OpenSSL cryptography toolkit: http://www.openssl.org
+## STANDARDS
+S. Lehtinen and C. Lonvick, The Secure Shell (SSH) Protocol Assigned Numbers, RFC 4250, January 2006.
+T. Ylonen and C. Lonvick, The Secure Shell (SSH) Protocol Architecture, RFC 4251, January 2006.
+T. Ylonen and C. Lonvick, The Secure Shell (SSH) Authentication Protocol, RFC 4252, January 2006.
+T. Ylonen and C. Lonvick, The Secure Shell (SSH) Transport Layer Protocol, RFC 4253, January 2006.
+T. Ylonen and C. Lonvick, The Secure Shell (SSH) Connection Protocol, RFC 4254, January 2006.
+J. Schlyter and W. Griffin, Using DNS to Securely Publish Secure Shell (SSH) Key Fingerprints, RFC 4255, January 2006.
+F. Cusack and M. Forssen, Generic Message Exchange Authentication for the Secure Shell Protocol (SSH), RFC 4256, January 2006.
+J. Galbraith and P. Remaker, The Secure Shell (SSH) Session Channel Break Extension, RFC 4335, January 2006.
+M. Bellare, T. Kohno, and C. Namprempre, The Secure Shell (SSH) Transport Layer Encryption Modes, RFC 4344, January 2006.
+B. Harris, Improved Arcfour Modes for the Secure Shell (SSH) Transport Layer Protocol, RFC 4345, January 2006.
+M. Friedl, N. Provos, and W. Simpson, Diffie-Hellman Group Exchange for the Secure Shell (SSH) Transport Layer Protocol, RFC 4419, March 2006.
+J. Galbraith and R. Thayer, The Secure Shell (SSH) Public Key File Format, RFC 4716, November 2006.
+D. Stebila and J. Green, Elliptic Curve Algorithm Integration in the Secure Shell Transport Layer, RFC 5656, December 2009.
+A. Perrig and D. Song, Hash Visualization: a New Technique to improve Real-World Security, 1999, International Workshop on Cryptographic Techniques and E-Commerce (CrypTEC '99).
+AUTHORS
+OpenSSH is a derivative of the original and free ssh 1.2.12 release by Tatu Ylonen. Aaron Campbell, Bob Beck, Markus Friedl, Niels Provos, Theo de Raadt, and Dug Song removed many bugs, re-added newer features, and created OpenSSH. Markus Friedl contributed the support for SSH protocol versions 1.5 and 2.0.
 
 ## COLOPHON
+This page is part of the openssh (Portable OpenSSH) project. Information about the project can be found at http://www.openssh.com/portable.html. If you have a bug report for this manual page, see http://www.openssh.com/report.html. This page was obtained from the tarball openssh-9.7p1.tar.gz fetched from http://ftp.eu.openbsd.org/pub/OpenBSD/OpenSSH/portable/ on 2024-06-14. If you discover any rendering problems in this HTML version of the page, or you believe there is a better or more up-to-date source for the page, or you have corrections or improvements to the information in this COLOPHON (which is not part of the original manual page), send a mail to man-pages@man7.org.
 
-This page is part of the nmap (a network scanner) project. Information about the project can be found at ⟨http://nmap.org/⟩. If you have a bug report for this manual page, send it to dev@nmap.org. This page was obtained from the project's upstream Git mirror of the Subversion repository ⟨https://github.com/nmap/nmap⟩ on 2024-06-14. (At that time, the date of the most recent commit that was found in the repository was 2024-06-13.) If you discover any rendering problems in this HTML version of the page, or you believe there is a better or more up-to-date source for the page, or you have corrections or improvements to the information in this COLOPHON (which is not part of the original manual page), send a mail to man-pages@man7.org.
+GNU - October 11, 2023 - SSH(1)
